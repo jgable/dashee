@@ -1,0 +1,10 @@
+{
+	"node": true,
+	"undef": true,
+	"unused": true,
+	"curly": true,
+	"eqeqeq": true,
+	"newcap": true,
+	"noempty": true,
+	"trailing": true
+}

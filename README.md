@@ -43,6 +43,10 @@ var dashee = require("dashee"),
 dashee.load(config);
 ```
 
+### Dashee Application
+
+Should start an express server with the appropriate routes and configuration.  Should initialize the NeDB connection.  Should initialize the configured theme.  Should require and initialize all the configured blocks.  Should compile/initialize all the blocks assets.
+
 ### Themes
 
 Themes should be exposed as a module that can be required.  They should be able to register their own directories for serving CSS and Script; the directory files will be compiled using mincer automatically before the server starts.
