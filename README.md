@@ -40,7 +40,9 @@ var dashee = require("dashee"),
 	};
 
 // Load the server
-dashee.load(config);
+dashee.load(function (err, loaded) {
+	console.log("Now running!");
+});
 ```
 
 ### Dashee Application

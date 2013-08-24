@@ -1,0 +1,80 @@
+//= require ./vendor/jquery.js
+//= require ./vendor/lodash.js
+//= require ./vendor/backbone.js
+//= require ./vendor/require.js
+
+(function ($, _, Backbone, define, undefined) {
+	"use strict";
+
+	// This forced arrangement may prove to be a problem in the future
+
+	define('jQuery', [], function () {
+		return $;
+	});
+
+	define('Underscore', [], function () {
+		return _;
+	});
+
+	define('lodash', [], function () {
+		return _;
+	});
+
+	define('Backbone', [], function () {
+		return Backbone;
+	});
+
+	// The mapping of block ids to implementation
+	<%= dasheeBlocksDefine() %>
+
+	define('dashee/block', ["Backbone"], function (Backbone) {
+
+		// TODO: Extrapolate
+		var DasheeBlockView = Backbone.View.extend({
+
+		});
+
+		// TODO: Extrapolate
+		var DasheeBlockModel = Backbone.Model.extend({
+
+		});
+
+		return {
+			View: DasheeBlockView,
+			Model: DasheeBlockModel
+		};
+	});
+
+	define('dashee', ["Backbone", "dashee/blocks"], function (Backbone, blocks) {
+
+		function DasheeApplication() {
+
+		}
+
+		_.extend(DasheeApplication.prototype, Backbone.Events);
+
+		_.extend(DasheeApplication.prototype, {
+			load: function () {
+				var self = this;
+
+				console.log('DasheeJS Loading');
+
+				// TODO: Load all the blocks
+				_.each(blocks, function (moduleName, blockId) {
+					require([moduleName], function (Module) {
+						var $blockEl = $("#block-" + blockId);
+
+						var model = new Module.Model($blockEl.data());
+
+						var view = new Module.View({ el: $blockEl, model: model });
+
+						console.log("Module:", moduleName, "loaded");
+
+					});
+				});
+			}
+		});
+
+		return DasheeApplication;
+	});
+}(jQuery, _, Backbone, define))

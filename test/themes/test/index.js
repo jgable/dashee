@@ -8,7 +8,7 @@ function TestTheme(dashee, config) {
 TestTheme.prototype.load = function (done) {
 	var self = this;
 
-	this.dashee.addAssetPath(path.join(__dirname, 'assets'), function () {
+	this.dashee.addAssetPaths(path.join(__dirname, 'assets'), function () {
 		this.loaded = true;
 
 		done(null, self);

@@ -20,30 +20,28 @@ describe("DasheeTheme", function () {
     });
 
     it("loads a theme by path", function (done) {
-        var theme = new DasheeTheme({
+        var fakeDashee = {
+                addAssetPaths: sinon.spy(function (paths, cb) {
+                    process.nextTick(function () {
+                        cb();
+                    });
+                })
+            },
+            theme = new DasheeTheme(fakeDashee, {
                 name: "./test/themes/test",
                 option: "1"
-            }),
-            fakeDashee = {
-                addAssetPath: function () {
-                    return;
-                }
-            };
-
-        sandbox.stub(fakeDashee, "addAssetPath", function (path, done) {
-            process.nextTick(function () {
-                done();
             });
-        });
 
-        theme.load(fakeDashee, function (err, loadedTheme) {
+        
+
+        theme.load(function (err, loadedTheme) {
             if (err) {
                 throw err;
             }
 
             should.exist(loadedTheme);
 
-            fakeDashee.addAssetPath.called.should.equal(true);
+            fakeDashee.addAssetPaths.called.should.equal(true);
 
             done();
         });

@@ -20,30 +20,44 @@ describe("Dashee", function () {
     });
 
     it("can load a config", function (done) {
-        var dashee = new Dashee(),
-            config = {
+        var config = {
+                theme: "test",
+                test: true
+            },
+            fakeTheme = {
+                registerViewRoutes: sandbox.spy()
+            },
+            fakeServer = {
+                registerViewRoot: sandbox.spy()
+            },
+            dashee = new Dashee(config);
+            
 
+        sandbox.stub(dashee, "loadServer", function (done) {
+            dashee.server.app = {
+                set: sandbox.spy()
             };
 
-        sandbox.stub(dashee, "loadServer", function (_, done) {
-            done(null, "server");
+            dashee.server.registerClientBlocks = sandbox.spy();
+            
+            done(null, fakeServer);
         });
 
         sandbox.stub(dashee, "loadTheme", function (_, done) {
-            done(null, "theme");
+            done(null, fakeTheme);
         });
 
         sandbox.stub(dashee, "loadBlocks", function (_, done) {
             done(null, "blocks");
         });
 
-        dashee.load(config, function (err) {
+        dashee.load(function (err) {
             if (err) { throw err; }
 
             dashee.config.should.eql(config);
 
-            dashee.server.should.equal("server");
-            dashee.theme.should.equal("theme");
+            dashee.loadServer.called.should.equal(true);
+            dashee.theme.should.equal(fakeTheme);
             dashee.blocks.should.equal("blocks");
 
             done();
