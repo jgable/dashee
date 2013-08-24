@@ -3,78 +3,235 @@
 //= require ./vendor/backbone.js
 //= require ./vendor/require.js
 
-(function ($, _, Backbone, define, undefined) {
-	"use strict";
+(function ($, _, Backbone, Faye, define, undefined) {
+    "use strict";
 
-	// This forced arrangement may prove to be a problem in the future
+    // This forced arrangement may prove to be a problem in the future
 
-	define('jQuery', [], function () {
-		return $;
-	});
+    define('jQuery', [], function () {
+        return $;
+    });
 
-	define('Underscore', [], function () {
-		return _;
-	});
+    define('Underscore', [], function () {
+        return _;
+    });
 
-	define('lodash', [], function () {
-		return _;
-	});
+    define('lodash', [], function () {
+        return _;
+    });
 
-	define('Backbone', [], function () {
-		return Backbone;
-	});
+    define('Backbone', [], function () {
+        return Backbone;
+    });
 
-	// The mapping of block ids to implementation
-	<%= dasheeBlocksDefine() %>
+    define('Faye', [], function () {
+        return Faye;
+    });
 
-	define('dashee/block', ["Backbone"], function (Backbone) {
+    define('dashee/sockets', ['Backbone', 'Faye'], function (Backbone, Faye) {
 
-		// TODO: Extrapolate
-		var DasheeBlockView = Backbone.View.extend({
+        // Manages the websocket/long poll connection to the server
+        function SocketManager(config) {
+            this.config = _.defaults(config || {}, SocketManager.DEFAULTS);
+            this.connected = false;
+        }
 
-		});
+        _.extend(SocketManager.prototype, Backbone.Events);
 
-		// TODO: Extrapolate
-		var DasheeBlockModel = Backbone.Model.extend({
+        _.extend(SocketManager.prototype, {
+            connect: function () {
+                if (SocketManager.client) {
+                    return SocketManager.client;
+                }
 
-		});
+                var client = new Faye.Client(this.config.url);
 
-		return {
-			View: DasheeBlockView,
-			Model: DasheeBlockModel
-		};
-	});
+                client.bind("transport:up", this.handleTransportUp);
+                client.bind("transport:down", this.handleTransportDown);
 
-	define('dashee', ["Backbone", "dashee/blocks"], function (Backbone, blocks) {
+                SocketManager.client = client;
 
-		function DasheeApplication() {
+                return client;
+            },
 
-		}
+            disconnect: function () {
+                if (!SocketManager.client) {
+                    return;
+                }
 
-		_.extend(DasheeApplication.prototype, Backbone.Events);
+                SocketManager.client.disconnect();
+            },
 
-		_.extend(DasheeApplication.prototype, {
-			load: function () {
-				var self = this;
+            handleTransportUp: function () {
+                console.log("Sockets up");
+                this.connected = true;
+                this.trigger("connected");
+            },
 
-				console.log('DasheeJS Loading');
+            handleTransportDown: function () {
+                console.log("Sockets down");
+                this.connected = false;
+                this.trigger("disconnected");
+            }
+        });
 
-				// TODO: Load all the blocks
-				_.each(blocks, function (moduleName, blockId) {
-					require([moduleName], function (Module) {
-						var $blockEl = $("#block-" + blockId);
+        SocketManager.DEFAULTS = {
+            url: ""
+        };
 
-						var model = new Module.Model($blockEl.data());
+        SocketManager.client = null;
 
-						var view = new Module.View({ el: $blockEl, model: model });
+        return SocketManager;
+    });
 
-						console.log("Module:", moduleName, "loaded");
+    // The mapping of block ids to implementation
+    <%= dasheeBlocksDefine() %>
+    
+    define('dashee/block', ["Backbone", 'dashee/sockets'], function (Backbone, Sockets) {
 
-					});
-				});
-			}
-		});
+        var socketsManager = new Sockets();
 
-		return DasheeApplication;
-	});
-}(jQuery, _, Backbone, define))
+        var SocketsModel = Backbone.Model.extend({
+            sockets: null,
+            autoListen: true,
+
+            // Keep track of socket subscriptions
+            subscriptions: {},
+            // Mapping of channel to callback name (like events hash)
+            channels: function () {
+                var chans = {};
+                chans["/blocks/" + this.id + "/data"] = "onData";
+            },
+
+            initialize: function () {
+
+                if (this.autoListen) {
+                    this.listen();
+                }
+            },
+
+            listen: function () {
+                if (!this.sockets) {
+                    this.sockets = socketsManager.connect();
+                }
+
+                this.subscribeChannels();
+            },
+
+            unlisten: function () {
+                this.unsubscribeChannels();
+            },
+
+            subscribeChannels: function () {
+                var self = this,
+                    toSubscribe = _.clone(this.channels);
+
+                if (_.isFunction(this.channels)) {
+                    toSubscribe = this.channels();
+                }
+
+                // Call bindAll on all the subscription handlers
+                _.bindAll.apply(_, [this].concat(_.unique(_.values(this.channels))));
+
+                _.each(this.channels, function (callbackName, channelName) {
+                    self.subscribe(channelName, self[callbackName]);
+                });
+            },
+
+            unsubscribeChannels: function () {
+                var self = this;
+
+                _.each(this.subscriptions, function (subscription, name) {
+                    self.unsubscribe(name);
+                });
+            },
+
+            subscribe: function (name, callback) {
+                this.unsubscribe(name);
+
+                this.subscriptions[name] = this.client.subscribe(name, callback);
+
+                // TODO: Success and error handling on subscription
+            },
+
+            unsubscribe: function (name) {
+                if (this.subscriptions[name]) {
+                    this.subscriptions[name].cancel();
+                }
+            },
+
+            onData: function () {
+                this.trigger.apply(this, ["data"].concat(_.toArray(arguments)));
+            },
+
+            onDataError: function () {
+                this.trigger.apply(this, ["dataerror"].concat(_.toArray(arguments)));
+            }
+        });
+
+        // 
+        var DasheeBlockModel = SocketsModel.extend({
+
+        });
+
+        // TODO: Extrapolate
+        var DasheeBlockView = Backbone.View.extend({
+
+        });
+
+        return {
+            View: DasheeBlockView,
+            Model: DasheeBlockModel
+        };
+    });
+
+    define('dashee', ["Backbone"], function (Backbone) {
+
+        function DasheeApplication() {
+            this.blocks = {};
+        }
+
+        _.extend(DasheeApplication.prototype, Backbone.Events);
+
+        _.extend(DasheeApplication.prototype, {
+            load: function () {
+                var self = this;
+
+                console.log('DasheeJS Loading');
+
+                // Load all the blocks
+                // TODO: Should we load in groups of moduleName to prevent duplicate require() calls?
+                require(["dashee/blocks"], function (blocks) {
+                    _.each(blocks, self.loadBlock);
+                });
+            },
+
+            loadBlock: function (moduleName, blockId) {
+                var self = this;
+
+                require([moduleName], function (Module) {
+                    var $blockEl = $("#block-" + blockId),
+                        // Might want to move this to another function to make it easy to extend
+                        modelData = _.extend({
+                            id: blockId,
+                            name: moduleName
+                        }, $blockEl.data());
+
+                    var model = new Module.Model(modelData);
+
+                    var view = new Module.View({ el: $blockEl, model: model });
+
+                    // Keep track by block id
+                    self.blocks[blockId] = view;
+                    // And by module name (can have multiple blocks with same type)
+                    self.blocks[moduleName] = self.blocks[moduleName] || [];
+                    self.blocks[moduleName].push(view);
+
+                    console.log("Module:", moduleName, blockId, "loaded");
+                });
+            }
+        });
+
+        return DasheeApplication;
+    });
+}(jQuery, _, Backbone, Faye, define));
