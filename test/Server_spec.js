@@ -60,13 +60,13 @@ describe("DasheeServer", function () {
 
         server.config.port = 7357;
 
-        server.addAssetPaths('/assets/test', path.join(__dirname, '..', 'assets', 'js'), function (err) {
+        server.addAssetPaths('/assets/test', path.join(__dirname, '..', 'assets'), function (err) {
             if (err) { throw err; }
 
             server.start(function (err) {
                 if (err) { throw err; }
 
-                server.getAssetPath('/assets/test', 'dashee.js', function (err, dasheePath) {
+                server.getAssetPath('/assets/test', 'js/dashee.js', function (err, dasheePath) {
                     if (err) { throw err; }
 
                     http.get('http://localhost:7357/assets/test/' + dasheePath, function (res) {

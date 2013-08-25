@@ -20,7 +20,7 @@ app.set('views', path.join(__dirname, "views"));
 
 var environment = new Mincer.Environment();
 
-environment.appendPath(path.join(__dirname, "..", "..", "assets", "js"));
+environment.appendPath(path.join(__dirname, "..", "..", "assets"));
 environment.appendPath(path.join(__dirname, 'assets'));
 
 hbs.registerHelper('assetPath', function (path) {
