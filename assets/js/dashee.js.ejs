@@ -76,7 +76,7 @@
         });
 
         SocketManager.DEFAULTS = {
-            url: ""
+            url: "<%= dasheeSocketsUrl() %>"
         };
 
         SocketManager.client = null;
@@ -84,8 +84,10 @@
         return SocketManager;
     });
 
-    // The mapping of block ids to implementation
-    <%= dasheeBlocksDefine() %>
+    // The mapping of block ids to module names
+    define('dashee/blocks', [], function () {
+        return <%= dasheeBlocksObject() %>;
+    });
     
     define('dashee/block', ["Backbone", 'dashee/sockets'], function (Backbone, Sockets) {
 
@@ -188,6 +190,8 @@
     define('dashee', ["Backbone"], function (Backbone) {
 
         function DasheeApplication() {
+            _.bindAll(this, "loadBlock");
+            
             this.blocks = {};
         }
 

@@ -68,6 +68,7 @@ describe("DasheeBlock", function () {
         });
 
         should.exist(block.id);
+        should.exist(block.name);
 
         block.load(null, function (err, loadedBlock) {
             if (err) {

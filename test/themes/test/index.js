@@ -3,6 +3,8 @@ var path = require('path');
 function TestTheme(dashee, config) {
 	this.dashee = dashee;
 	this.config = config;
+
+	this.name = "dashee-theme-test";
 }
 
 TestTheme.prototype.load = function (done) {

@@ -30,12 +30,12 @@ hbs.registerHelper('assetPath', function (path) {
 });
 
 environment.registerHelper("dasheeSocketsUrl", function () {
-    console.log("dasheeSocketsUrl call");
     return "http://localhost:4000/live";
 });
 
-environment.registerHelper("dasheeBlocksDefine", function () {
-    return "";
+var blocksObject = {};
+environment.registerHelper("dasheeBlocksObject", function () {
+    return JSON.stringify(blocksObject);
 });
 
 app.use("/assets", Mincer.createServer(environment));
