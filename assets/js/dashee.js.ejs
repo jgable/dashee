@@ -1,9 +1,10 @@
 //= require ./vendor/jquery.js
 //= require ./vendor/lodash.js
 //= require ./vendor/backbone.js
+//= require ./vendor/chart.js
 //= require ./vendor/require.js
 
-(function ($, _, Backbone, Faye, define, undefined) {
+(function ($, _, Backbone, Faye, Chart, define, undefined) {
     "use strict";
 
     // This forced arrangement may prove to be a problem in the future
@@ -24,6 +25,11 @@
         return Backbone;
     });
 
+    define('Chart', [], function () {
+        return Chart;
+    });
+
+    // Faye is included with a previous script tag having src='live/client.js'.
     define('Faye', [], function () {
         return Faye;
     });
@@ -191,7 +197,7 @@
 
         function DasheeApplication() {
             _.bindAll(this, "loadBlock");
-            
+
             this.blocks = {};
         }
 
@@ -238,4 +244,4 @@
 
         return DasheeApplication;
     });
-}(jQuery, _, Backbone, Faye, define));
+}(jQuery, _, Backbone, Faye, Chart, define));

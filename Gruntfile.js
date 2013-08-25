@@ -1,5 +1,4 @@
 
-
 module.exports = function (grunt) {
     // load all grunt tasks
     require('matchdep').filterDev('grunt-*').forEach(grunt.loadNpmTasks);
@@ -13,7 +12,7 @@ module.exports = function (grunt) {
             test: ["test/**/*.js", "!test/client/assets/*.js"],
             client: {
                 files: {
-                    src: ['assets/js/**/*.{js}', '!assets/js/vendor/**/*.js']
+                    src: ['assets/js/**/*.js', '!assets/js/vendor/**/*.js']
                 },
                 options: {
                     jshint: {
@@ -38,6 +37,24 @@ module.exports = function (grunt) {
             all: ["test/**/*_spec.js"]
         },
 
+        clean: {
+            client: ["assets/js/dashee.js"]
+        },
+
+        copy: {
+            client: {
+                files: {
+                    "assets/js/dashee.js": "assets/js/dashee.js.ejs"
+                },
+                options: {
+                    processContent: function (contents) {
+                        contents = contents.replace("<%= dasheeBlocksObject() %>", "{}");
+                        contents = contents.replace("<%= dasheeSocketsUrl() %>", "http://localhost:4000/live");
+                    }
+                }
+            }
+        },
+
         express: {
             client_tests: {
                 options: {
@@ -47,9 +64,6 @@ module.exports = function (grunt) {
         },
 
         mocha_phantomjs: {
-            options: {
-
-            },
             all: {
                 options: {
                     urls: [
@@ -63,6 +77,6 @@ module.exports = function (grunt) {
     grunt.initConfig(cfg);
 
     grunt.registerTask("test_client", ["express", "mocha_phantomjs"]);
-    grunt.registerTask("validate", ["jshint2", "mochacli", "test_client"]);
+    grunt.registerTask("validate", ["copy:client", "jshint2", "clean:client", "mochacli", "test_client"]);
     grunt.registerTask("default", ["validate"]);
 };
