@@ -3,6 +3,7 @@
 //= require ../../assets-vendor/js/backbone.js
 //= require ../../assets-vendor/js/chart.js
 //= require ../../assets-vendor/js/require.js
+//= require ../../assets-vendor/js/text.js
 
 (function ($, _, Backbone, Faye, Chart, define, undefined) {
     "use strict";
@@ -38,6 +39,8 @@
 
         // Manages the websocket/long poll connection to the server
         function SocketManager(config) {
+            _.bindAll(this, "handleTransportUp", "handleTransportDown");
+            
             this.config = _.defaults(config || {}, SocketManager.DEFAULTS);
             this.connected = false;
         }
@@ -97,6 +100,8 @@
     
     define('dashee/block', ["Backbone", 'dashee/sockets'], function (Backbone, Sockets) {
 
+        var emptyStringTemplate = function () { return ""; };
+
         var socketsManager = new Sockets();
 
         var SocketsModel = Backbone.Model.extend({
@@ -108,7 +113,11 @@
             // Mapping of channel to callback name (like events hash)
             channels: function () {
                 var chans = {};
-                chans["/blocks/" + this.id + "/data"] = "onData";
+                
+                chans["/blocks/" + this.id + "/data"] = "onSocketData";
+                chans["/blocks/" + this.id + "/error"] = "onSocketDataError";
+
+                return chans;
             },
 
             initialize: function () {
@@ -118,9 +127,13 @@
                 }
             },
 
+            connectSockets: function () {
+                return socketsManager.connect();
+            },
+
             listen: function () {
                 if (!this.sockets) {
-                    this.sockets = socketsManager.connect();
+                    this.sockets = this.connectSockets();
                 }
 
                 this.subscribeChannels();
@@ -139,9 +152,9 @@
                 }
 
                 // Call bindAll on all the subscription handlers
-                _.bindAll.apply(_, [this].concat(_.unique(_.values(this.channels))));
+                _.bindAll.apply(_, [this].concat(_.unique(_.values(toSubscribe))));
 
-                _.each(this.channels, function (callbackName, channelName) {
+                _.each(toSubscribe, function (callbackName, channelName) {
                     self.subscribe(channelName, self[callbackName]);
                 });
             },
@@ -157,7 +170,7 @@
             subscribe: function (name, callback) {
                 this.unsubscribe(name);
 
-                this.subscriptions[name] = this.client.subscribe(name, callback);
+                this.subscriptions[name] = this.sockets.subscribe(name, callback);
 
                 // TODO: Success and error handling on subscription
             },
@@ -168,23 +181,81 @@
                 }
             },
 
-            onData: function () {
-                this.trigger.apply(this, ["data"].concat(_.toArray(arguments)));
+            parse: function (data) {
+                return data;
             },
 
-            onDataError: function () {
-                this.trigger.apply(this, ["dataerror"].concat(_.toArray(arguments)));
+            onSocketData: function () {
+                var parsedData = this.parse.apply(this, arguments);
+
+                this.set(parsedData);
+            },
+
+            onSocketDataError: function () {
+                this.trigger.apply(this, ["error"].concat(_.toArray(arguments)));
             }
         });
 
-        // 
+        // Our base model
         var DasheeBlockModel = SocketsModel.extend({
 
         });
 
-        // TODO: Extrapolate
-        var DasheeBlockView = Backbone.View.extend({
+        // A base level template view
+        var TemplateView = Backbone.View.extend({
+            // Set this to your stache name, or a function that takes template data and returns html
+            template: null,
 
+            render: function() {
+                var template = this.getTemplate();
+
+                // Set the html based on the template
+                this.$el.html(template(this.getTemplateData()));
+
+                // Allow for fiddling after rendered
+                this.afterRender();
+
+                return this;
+            },
+
+            getTemplate: function() {
+                // If we already have a template function
+                if(_.isFunction(this.template)) { 
+                    return this.template;
+                }
+
+                // Compile the template if needed
+                if(_.isString(this.template)) {
+                    this.template = Ss.template(this.template);
+                    return this.template;
+                }
+
+                // Otherwise return an empty string.
+                return emptyStringTemplate;
+            },
+
+            getTemplateData: function() {
+                // If there is a model call toJSON on it, otherwise, empty object.
+                if(this.model && _.isFunction(this.model.toJSON)) {
+                    return this.model.toJSON();
+                }
+
+                // Also check for a collection
+                if(this.collection && _.isFunction(this.collection.toJSON)) {
+                    return this.collection.toJSON();
+                }
+
+                // Otherwise, empty object
+                return {};
+            },
+
+            // By default, do nothing after rendering
+            afterRender: $.noop
+        });
+
+        // Our base view
+        var DasheeBlockView = TemplateView.extend({
+            
         });
 
         return {
